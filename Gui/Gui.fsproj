@@ -21,8 +21,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\CreasePattern\CreasePattern.fsproj" />
-        <ProjectReference Include="..\FoldFile\FoldFile.fsproj" />
+        <ProjectReference Include="..\Origami\Origami.fsproj" />
+        <ProjectReference Include="..\Fold\Fold.fsproj" />
         <ProjectReference Include="..\Utilities\Utilities.fsproj" />
     </ItemGroup>
 
@@ -36,6 +36,7 @@
         <Compile Include="Widgets\Dialogs.fs" />
         <Compile Include="Widgets\DockPanel.fs" />
         <Compile Include="Widgets\CreasePatternDrawing.fs" />
+        <Compile Include="Widgets\Text.fs" />
         <Compile Include="Tabs\CreasePatternTab\IconBar.fs" />
         <Compile Include="Tabs\CreasePatternTab\InfoBar.fs" />
         <Compile Include="Tabs\CreasePatternTab\FileSettings.fs" />

@@ -1,5 +1,8 @@
 namespace Gui.Tabs.CreasePatternTab.Drawing
 
+open Utilities
+open Utilities.Collections
+
 module CreasePatternCanvas =
 
     open Avalonia
@@ -38,7 +41,7 @@ module CreasePatternCanvas =
 
             else
                 match updatedState.pressed, updatedState.hover with
-                | Some (VertexComponent pressed), Some (VertexComponent hover) when pressed <> hover ->
+                | Some (VertexElement pressed), Some (VertexElement hover) when pressed <> hover ->
 
                     { updatedState with
                           pressed = None
@@ -71,11 +74,11 @@ module CreasePatternCanvas =
 
             let edgeWithin =
                 CreasePattern.edgeWithin convertedCloseDistance convertedVertex state.creasePattern
-
+                
             let hover =
                 match vertexWithin, edgeWithin with
-                | Some vertex, _ -> Some(VertexComponent vertex)
-                | None, Some edge -> Some(EdgeComponent edge)
+                | Some vertex, _ -> Some(VertexElement vertex)
+                | None, Some edge -> Some(EdgeElement edge)
                 | None, None -> None
 
             { state with
@@ -95,20 +98,20 @@ module CreasePatternCanvas =
 
     let canvas (state: CreasePatternTabState) =
         let edgeLines =
-            List.map
+            Seq.map
                 (CreasePatternComponents.edgeLineDefault state.translation)
                 (CreasePattern.edges state.creasePattern)
-            |> List.rev
+            |> Seq.rev
 
         let vertexPoints =
-            List.map
+            Seq.map
                 (CreasePatternComponents.vertexDefault state.translation)
                 (CreasePattern.vertices state.creasePattern)
 
         let creasePatternComponent vertexView edgeView ``component`` =
             match ``component`` with
-            | VertexComponent vertex -> vertexView state.translation vertex
-            | EdgeComponent edge -> edgeView state.translation edge
+            | VertexElement vertex -> vertexView state.translation vertex
+            | EdgeElement edge -> edgeView state.translation edge
 
         let hoverElement =
             Option.map
@@ -122,9 +125,9 @@ module CreasePatternCanvas =
 
         let dragLine =
             match state.pressed, state.hover, state.vertexPosition with
-            | Some (VertexComponent pressed), Some (VertexComponent hover), _ ->
+            | Some (VertexElement pressed), Some (VertexElement hover), _ ->
                 Some(CreasePatternComponents.dragLine state.translation pressed hover)
-            | Some (VertexComponent pressed), _, Some vertexPosition ->
+            | Some (VertexElement pressed), _, Some vertexPosition ->
                 Some(CreasePatternComponents.dragLine state.translation pressed vertexPosition)
             | _ -> None
 
@@ -135,16 +138,16 @@ module CreasePatternCanvas =
 
         let canvasElements =
             []
-            |> List.append edgeLines
-            |> List.appendIf state.showVertices vertexPoints
+            |> List.append (List.ofSeq edgeLines)
+            |> List.appendIf state.showVertices (List.ofSeq vertexPoints)
             |> List.consWhenSome dragLine
             |> List.consWhenSome hoverElement
             |> List.consWhenSome pressedElement
             |> List.append selectedElements
             |> List.rev
 
-        Canvas.create [ Canvas.height state.pageSize.height
-                        Canvas.width state.pageSize.width
+        Canvas.create [ Canvas.height state.pageSize.Height
+                        Canvas.width state.pageSize.Width
                         Canvas.background Theme.palette.canvasBackground
                         Canvas.children canvasElements
                         Canvas.name canvasName ]
@@ -167,5 +170,5 @@ module CreasePatternCanvas =
                  (fun e ->
                      Msg.MouseReleased((Event.positionRelativeTo canvasName e), e.KeyModifiers)
                      |> dispatch)
-                 
+
              DockPanel.children [ canvas state ] ]

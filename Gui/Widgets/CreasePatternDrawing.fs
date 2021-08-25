@@ -4,6 +4,7 @@ open Avalonia.FuncUI.Types
 open Geometry
 
 module CreasePatternDrawing =
+    // Todo: Extracting drawing api
 
     open Avalonia
     open Avalonia.Controls
@@ -22,7 +23,7 @@ module CreasePatternDrawing =
         | Selected
         | Hovered
 
-    type private CanvasComponent = Component * ComponentState
+    type private CanvasComponent = GraphElement * ComponentState
 
 
     (* Theming *)
@@ -32,29 +33,34 @@ module CreasePatternDrawing =
            vertexSize = 8.
            vertexHoveredSize = 10. |}
 
-    let private componentColor componentType state : string =
-        let stateColor state =
-            match state with
-            | Default -> Theme.colors.darkGray
-            | Hovered -> Theme.colors.blue
-            | Selected -> Theme.colors.yellow
+    let private stateColor state =
+        match state with
+        | Default -> Theme.colors.darkGray
+        | Hovered -> Theme.colors.blue
+        | Selected -> Theme.colors.yellow
 
-        match componentType with
-        | VertexComponent _ -> stateColor state
-        | EdgeComponent edge ->
-            match state with
-            | Default ->
-                match edge.assignment with
-                | Boundary -> Theme.colors.lighterGray
-                | Mountain -> Theme.colors.green
-                | Valley -> Theme.colors.blue
-                | Unassigned -> Theme.colors.lighterGray
-            | _ -> stateColor state
+    let private vertexColor state =
+        match state with
+        | Default -> Theme.colors.darkGray
+        | Hovered -> Theme.colors.blue
+        | Selected -> Theme.colors.yellow
+
+
+    let private edgeColor state assignment =
+        match state with
+        | Default ->
+            match assignment with
+            | Boundary -> Theme.colors.lighterGray
+            | Mountain -> Theme.colors.green
+            | Valley -> Theme.colors.blue
+            | Flat -> Theme.colors.lighterGray
+            | Unassigned -> Theme.colors.lighterGray
+        | _ -> stateColor state
 
 
     (* Basic Components *)
 
-    let private edgeLine
+    let private drawEdge
         (options: {| translation: Translation
                      edge: Edge
                      state: ComponentState |})
@@ -64,15 +70,15 @@ module CreasePatternDrawing =
 
         Line.create
         <| [ Line.startPoint
-             <| Point(scaledEdge.crease.start.x, scaledEdge.crease.start.y)
+             <| Point(scaledEdge.Crease.Start.X, scaledEdge.Crease.Start.Y)
              Line.endPoint
-             <| Point(scaledEdge.crease.finish.x, scaledEdge.crease.finish.y)
-             Line.stroke (componentColor (EdgeComponent options.edge) options.state)
+             <| Point(scaledEdge.Crease.Finish.X, scaledEdge.Crease.Finish.Y)
+             Line.stroke (edgeColor options.state options.edge.assignment)
              Line.strokeThickness theme.lineThickness
              Line.strokeLineCap PenLineCap.Round ]
         :> IView
 
-    let private vertexPoint
+    let private drawVertex
         (options: {| translation: Translation
                      size: float
                      vertex: Point2D
@@ -84,59 +90,51 @@ module CreasePatternDrawing =
         Ellipse.create
         <| [ Ellipse.width options.size
              Ellipse.height options.size
-             Ellipse.left (scaledVertex.x - options.size / 2.)
-             Ellipse.top (scaledVertex.y - options.size / 2.)
-             Ellipse.fill (componentColor (VertexComponent options.vertex) options.state) ]
+             Ellipse.left (scaledVertex.X - options.size / 2.)
+             Ellipse.top (scaledVertex.Y - options.size / 2.)
+             Ellipse.fill (vertexColor options.state) ]
         :> IView
 
-    let private drawComponent
-        (options: {| translation: Translation
-                     element: Component
-                     state: ComponentState |})
-        : IView =
-        match options.element with
-        | VertexComponent vertex ->
-            vertexPoint
-                {| translation = options.translation
-                   vertex = vertex
-                   size = 4.
-                   state = options.state |}
-        | EdgeComponent edge ->
-            edgeLine
-                {| translation = options.translation
-                   edge = edge
-                   state = options.state |}
-
-
-    let private draw creasePattern =
-        let size = 500.
-        let translation = Translation.create creasePattern size
+    let private draw
+        (options: {| size: float
+                     creasePattern: CreasePattern |})
+        =
+        let translation =
+            Translation.create options.creasePattern options.size
 
         let edges =
-            CreasePattern.edges creasePattern
-            |> List.map EdgeComponent
+            CreasePattern.edges options.creasePattern
+            |> Seq.map
+                (fun edge ->
+                    drawEdge
+                        {| translation = translation
+                           edge = edge
+                           state = ComponentState.Default |})
 
         let vertices =
-            CreasePattern.vertices creasePattern
-            |> List.map VertexComponent
-
-        let components =
-            edges @ vertices
-            |> List.map
-                (fun element ->
-                    drawComponent
+            CreasePattern.vertices options.creasePattern
+            |> Seq.map
+                (fun vertex ->
+                    drawVertex
                         {| translation = translation
-                           element = element
-                           state = Default |})
+                           vertex = vertex
+                           size = 4.
+                           state = ComponentState.Default |})
 
-        Canvas.create [ Canvas.height size
-                        Canvas.width size
+        let components = Seq.append edges vertices
+
+        Canvas.create [ Canvas.height options.size
+                        Canvas.width options.size
                         Canvas.background Theme.palette.canvasBackground
-                        Canvas.children components
+                        Canvas.children (List.ofSeq components)
                         // TODO: fix name
                         Canvas.name "TODO: Fix Me" ]
 
 
     (* API *)
 
-    let create creasePattern = draw creasePattern
+    let create
+        (options: {| size: float
+                     creasePattern: CreasePattern |})
+        =
+        draw options

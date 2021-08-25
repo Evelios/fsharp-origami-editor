@@ -23,6 +23,13 @@ module Theme =
         {| height = 600.
            width = 800.
         |}
+        
+        
+    let font =
+        {| h1 = 16.
+           h2 = 14.
+           normal = 12.
+          |}
 
     let border = {| thickness = 1. |}
 
